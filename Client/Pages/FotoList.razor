@@ -1,0 +1,72 @@
+﻿@page "/foto"
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+
+<button class="btn btn-info text-decoration-none">
+
+<NavLink href="/email">Vai a email</NavLink>
+</button>
+
+<PageTitle>Foto</PageTitle>
+@if (loading)
+{
+    <Loading />
+}
+else
+{
+    if (Fotos?.Fotos?.Count > 0)
+    {
+        <p>Risultati totali : @Fotos?.TotalResult</p>
+        <div class="d-flex flex-wrap gap-5">
+            @foreach (Foto foto in Fotos?.Fotos)
+            {
+            <FotoCard 
+                Name="@foto.Name"  
+                Description="@foto.Description"
+                Img="@foto.ImagePath"       
+                Id="@foto.Id"      
+                Width="300"        
+                Text="Info" />
+            }
+        </div>
+    }
+    else
+    {
+        <p>Non ci sono foto, prova a ricaricare la pagina</p>
+        <NavLink class="btn btn-success" @onclick="(e) => NavigationManager.NavigateTo(NavigationManager.Uri)">Ricarica</NavLink>
+    }
+    }
+
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+    private FotoResponse? Fotos = new FotoResponse();
+    private string? baseUrl;
+    private bool loading = true;
+
+ 
+
+    protected override async Task OnInitializedAsync()
+    {
+        baseUrl = "https://localhost:7285/api/foto/";
+
+        string currentUrl = NavigationManager.Uri;
+
+        await LoadFotos();
+    }
+
+    private async Task LoadFotos(string? search = "", int page = 1)
+    {
+        string apiUrl = $"{baseUrl}getfotos?page={page}&search={search}&publicview=true";
+
+        Fotos = await HttpClient.GetFromJsonAsync<FotoResponse>(apiUrl);
+        loading = false;
+    }
+
+    public void GetUrl(int id)
+    {
+        NavigationManager.NavigateTo($"/foto/{id}");
+    }
+}

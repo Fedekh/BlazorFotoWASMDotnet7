@@ -1,0 +1,48 @@
+﻿@page "/email"
+@inject HttpClient http
+
+<h3>Email</h3>
+<button class="btn my-4 btn-danger" @onclick=SendMail>Invia email</button>
+
+<h3>@Message</h3>
+
+@code {
+    private string Message { get; set; } = "";
+    private string url = "https://localhost:7285/api/mail/sendmail";
+    private Mail Mail = new Mail()
+        {
+            To = "email destinatario",
+            Body = "prova oggettooooo",
+            Subject = "frgrgrgrgr"
+        };
+
+    private async Task SendMail()
+    {
+        try
+        {
+            var response = await http.PostAsJsonAsync(url, Mail);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Message = "Email inviata correttamente";
+                StateHasChanged(); 
+                await Task.Delay(5000);
+                Message = ""; 
+            }
+            else
+            {
+                Message = $"Errore durante l'invio dell'email. Codice di stato: {response.StatusCode}";
+                StateHasChanged(); 
+                await Task.Delay(5000);
+                Message = ""; 
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"Errore durante l'invio dell'email: {ex.Message}\nStackTrace: {ex.StackTrace}";
+            StateHasChanged(); 
+            await Task.Delay(5000);
+            Message = ""; 
+        }
+    }
+}

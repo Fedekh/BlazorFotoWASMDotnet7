@@ -1,0 +1,45 @@
+﻿@inject NavigationManager NavigationManager
+
+
+<div class="cardk">
+    <img src="@Img" class="card-imsg-top" width="@Width">
+    <div class="card-body">
+        <h5 class="card-title">Titolo: @Name</h5>
+        <p class="card-text">Descrizione : @Description</p>
+    </div>
+    @if (NavigationManager.Uri.Contains("/dashboard"))
+    {
+        <NavLink class="btn btn-info" href=@GoBackToDashboard()>@Text</NavLink>
+    }else
+    {
+        <NavLink class="btn btn-info" href=@GoBackToPublic()>@Text</NavLink>
+    }
+</div>
+
+
+    @code {
+    [Parameter]
+    public string? Name { get; set; }
+    [Parameter]
+    public string? Text { get; set; }
+    [Parameter]
+    public string? Description { get; set; }
+    [Parameter]
+    public string? Img { get; set; }
+    [Parameter]
+    public bool? Goback { get; set; }
+    [Parameter]
+    public int? Id { get; set; }
+    [Parameter]
+    public int? Width { get; set; }
+
+    public string GoBackToDashboard()
+    {
+        return "/dashboard";
+    }
+
+    public string GoBackToPublic()
+    {
+        return $"/foto/{Id}";
+    }
+}

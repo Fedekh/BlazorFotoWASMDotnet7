@@ -1,0 +1,414 @@
+﻿@page "/dashboard"
+@layout AdminLayout
+@inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+
+<div @onclick="() => IsModal=false">
+    <h3>Dashboard</h3>
+    <NavLink class="btn btn-info me-3 my-3" @onclick="() => IsCreating = true"> Crea Foto</NavLink>
+
+    @if (IsModal)
+    {
+        <Modal Title="Eliminazione"
+               EntitaEliminare=@deleteTextModal
+               OnParentMethod="(() => Delete(IdToDelete))" />
+    }
+
+    @if (IsCreating || IsEditing)
+    {
+         <button type="button" @onclick="Reset" class="btn btn-danger">Annulla</button>
+
+        @if (IsCreating)
+        {
+            
+             <EditForm Model="@newFoto" OnValidSubmit="@HandleSubmitCreate">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label class="text-danger" for="name">Nome:</label>
+                    <InputText id="name" @bind-Value="newFoto.Name" class="form-control" />
+                    <ValidationMessage For="@(() => newFoto.Name)" />
+                </div>
+
+                <div class="form-group">
+                    <label class="text-danger" for="description">Descrizione:</label>
+                    <InputText id="description" @bind-Value="newFoto.Description" class="form-control" />
+                    <ValidationMessage For="@(() => newFoto.Description)" />
+                </div>
+
+                <div class="form-group">
+                    <label class="text-danger" for="isVisible">Visibile:</label>
+                    <InputCheckbox id="isVisible" @bind-Value="newFoto.IsVisible" />
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Carica immagine:</label>
+                    <InputFile id="image" name="image" OnChange="@HandleFileChange" />
+                </div>
+                <button type="submit" class="btn mb-4 btn-primary">Salva</button>
+                <div class="d-flex gap-3 align-items-start my-3">
+                     <img src="@ImageUri"/>
+                     @if (ImageUri != "")
+                     {
+                        <button type="button" @onclick=RemoveImg style="background-color:inherit;">
+                            <i class="bi bi-eraser"></i>
+                        </button>
+                     }
+                </div>
+            </EditForm>
+
+        }
+        else if (IsEditing)
+        {
+
+            <EditForm Model="@fotoEdit" OnValidSubmit="@HandleSubmitEdit">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label for="name">Nome:</label>
+                    <InputText id="name" @bind-Value="fotoEdit.Name" class="form-control" />
+                    <ValidationMessage For="@(() => fotoEdit.Name)" />
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Descrizione:</label>
+                    <InputText id="description" @bind-Value="fotoEdit.Description" class="form-control" />
+                    <ValidationMessage For="@(() => fotoEdit.Description)" />
+                </div>
+
+                <div class="form-group">
+                    <label for="isVisible">Visibile:</label>
+                    <InputCheckbox id="isVisible" @bind-Value="fotoEdit.IsVisible" />
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Carica immagine:</label>
+                    <InputFile id="image" name="image" OnChange="@HandleFileChange" />
+                </div>
+                <button type="submit" class="btn mb-4 btn-primary">Salva</button>
+                <div class="d-flex gap-3 align-items-start my-3">
+                    <img src="@(string.IsNullOrWhiteSpace(ImageUri) ? fotoEdit.ImagePath : ImageUri)" />
+
+                    @if (!string.IsNullOrEmpty(ImageUri) || !string.IsNullOrEmpty(fotoEdit.ImagePath))
+                    {
+                        <button type="button" @onclick=RemoveImg class="text-white" style="background-color:inherit;">
+                            <i class="bi bi-eraser"></i>
+                        </button>
+                    }
+                </div>
+            </EditForm>
+        }
+
+    }
+
+     @if (IsLoading)
+    {
+        <Loading />
+    }
+    else if (fotos?.Fotos != null && fotos.Fotos.Count > 0)
+    {
+        <table class="table table-dark table-hover">
+            <thead>
+                <tr>
+                    <th class="d-flex gap-2 align-items-center">
+                        <input type="checkbox" @onchange="SelectAllChanged" />
+                        <label for="selectAll">ID</label>
+
+                        @if (selectedPhotoIds.Any(x => x.Value))
+                        {
+                            <button class="btn btn-danger" type="button" @onclick=DeleteSelected>Cancella selezionati</button>
+                        }
+                    </th>
+
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Visible</th>
+                    <th>Image</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var foto in fotos.Fotos)
+                {
+                    <tr>
+                        <td>
+                                <input type="checkbox" @bind="selectedPhotoIds[foto.Id]" />
+                            <label for=@foto.Id>@foto.Id</label>
+                        </td>
+                        <td>@foto.Name</td>
+                        <td>@foto.Description</td>
+                        <td>@(foto.IsVisible ? "Si" : "No")</td>
+                        <td>@(foto.ImageFile is null ? "No" : "Si")</td>
+                        <td>
+
+                            <button type="button" class="btn btn-success" @onclick=@(() => NavigationManager.NavigateTo(foto.Id != null ? $"/dashboard/{foto.Id}" : "")) @onclick:stopPropagation=true>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button type="button" @onclick="() => EditaFoto(foto)" @onclick:stopPropagation=true class="btn btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" @onclick="() => MostraModale(foto.Id, foto.Name)" @onclick:stopPropagation=true class="btn btn-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                           
+                        </td>
+                  
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>Nessuna foto disponibile.</p>
+    }
+</div>
+
+
+
+@code {
+    private bool IsLoading { get; set; } = true;
+    public bool IsCreating { get; set; } = false;
+    public bool IsEditing { get; set; } = false;
+    public bool IsModal { get; set; } = false;
+    private string baseUrl = "https://localhost:7285/api/foto/";
+    public Foto? newFoto = new Foto();
+    public Foto? fotoEdit = new Foto();
+    public FotoResponse? fotos { get; set; }
+    private string deleteTextModal { get; set; } = "";
+    private int IdToDelete { get; set; } = 0;
+    private string ImageUri { get; set; } = "";
+    private string selectedIds = "";
+    private Dictionary<int, bool> selectedPhotoIds = new Dictionary<int, bool>();
+
+
+    private void SelectAllChanged(ChangeEventArgs e)
+    {
+        foreach (var foto in fotos.Fotos)
+        {
+            selectedPhotoIds[foto.Id] = (bool)e.Value;
+        }
+    }
+
+    private async Task DeleteSelected()
+    {
+        //parsing da List<int> a string
+        selectedIds = string.Join(",", selectedPhotoIds.Where(x => x.Value).Select(x => x.Key));
+
+        var response = await HttpClient.DeleteAsync($"https://localhost:7285/api/foto/DeleteManyFotos?ids={selectedIds}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            string message = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(message);
+            selectedPhotoIds = new Dictionary<int, bool>();
+            await LoadFotos();
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine($"Errore durante la richiesta DELETE. Status code: {response.StatusCode}");
+        }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFotos();
+    }
+
+    private async Task LoadFotos(string? search = "", int page = 1)
+    {
+        IsLoading = true;
+        string apiUrl = $"{baseUrl}getfotos?page={page}&search={search}";
+        fotos = await HttpClient.GetFromJsonAsync<FotoResponse>(apiUrl);
+        IsLoading = false;
+        foreach(var foto in fotos.Fotos)
+        {
+            if (!selectedPhotoIds.ContainsKey(foto.Id))
+            selectedPhotoIds.Add(foto.Id, false);
+        }
+    }
+
+    public async Task HandleSubmitCreate()
+    {
+        string apiUrl = $"{baseUrl}createfoto";
+
+        try
+        {
+            // Lettura + invio al server
+            // crea un payload di tipo multipart/form-data
+            MultipartFormDataContent content = new MultipartFormDataContent();
+
+            // Aggiungi l'immagine con il nome del campo "image"
+            if (newFoto.ImageFile != null)
+            {
+                content.Add(new ByteArrayContent(newFoto.ImageFile), "image", "filename.jpg");
+            }
+            // Aggiungi altri campi al form-data
+            content.Add(new StringContent(newFoto.Name), "foto.name");
+            content.Add(new StringContent(newFoto.Description), "foto.description");
+            content.Add(new StringContent(newFoto.IsVisible.ToString()), "foto.isvisible");
+
+            // Invia la richiesta HTTP con HttpClient
+            var response = await HttpClient.PostAsync(apiUrl, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("successo");
+                newFoto = new Foto();
+                IsCreating = false;
+                IsEditing = false;
+                await LoadFotos();
+                StateHasChanged();
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+
+                if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    Console.WriteLine($"Error: {errorMessage}");
+                }
+                else
+                {
+                    Console.WriteLine("Errore sconosciuto durante la richiesta.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+    }
+
+    public async Task HandleSubmitEdit()
+    {
+        string apiUrl = $"{baseUrl}editfoto";
+        string apii = $"{apiUrl}/{fotoEdit.Id}";
+        try
+        {
+            MultipartFormDataContent content = new MultipartFormDataContent();
+
+            content.Add(new ByteArrayContent(fotoEdit.ImageFile), "image", "filename.jpg");
+            content.Add(new StringContent(fotoEdit.Name), "foto.name");
+            content.Add(new StringContent(fotoEdit.Description), "foto.description");
+            content.Add(new StringContent(fotoEdit.IsVisible.ToString()), "foto.isvisible");
+
+            // Invia la richiesta HTTP con HttpClient
+
+            var response = await HttpClient.PutAsync($"{apiUrl}/{fotoEdit.Id}", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("successo");
+                newFoto = new Foto();
+                IsCreating = false;
+                IsEditing = false;
+                await LoadFotos();
+                StateHasChanged();
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+
+                if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    Console.WriteLine($"Error: {errorMessage}");
+                }
+                else
+                {
+                    Console.WriteLine("Errore sconosciuto durante la richiesta.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+    }
+
+    public void Reset()
+    {
+        newFoto = new Foto();
+        IsCreating = false;
+        IsEditing = false;
+        ImageUri = "";
+        StateHasChanged();
+    }
+
+
+    public async Task Delete(int id)
+    {
+        string apiUrl = $"{baseUrl}deletefoto/{id}";
+        try
+        {
+            var response = await HttpClient.DeleteAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Foto con ID {id} eliminata con successo");
+                selectedPhotoIds = new Dictionary<int, bool>();
+                selectedIds = "";
+                await LoadFotos(); 
+                IsCreating = false;
+                IsEditing = false;
+                IsModal = false;
+                ImageUri = "";
+                StateHasChanged();
+
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Errore durante l'eliminazione: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Eccezione durante l'eliminazione: {ex.Message}");
+        }
+    }
+    public async Task MostraModale(int id,string? entityTODelete)
+    {
+        IsModal = true;
+        IdToDelete = id;
+        deleteTextModal = entityTODelete;
+    }
+
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        //Client:IBrowserFile
+        //Server:IFormFile
+        long maxFileSize = 1024 * 1024 * 15;
+
+        //lettura + scrittura client side
+        IBrowserFile file = await e.File.RequestImageFileAsync("image/jpg", 640, 480);
+        using Stream fileStream = file.OpenReadStream(maxFileSize);
+        using MemoryStream ms = new MemoryStream();
+
+        await fileStream.CopyToAsync(ms); // Il di fileStream viene copiato in ms.
+
+        ImageUri = $"data:image/jpeg;base64,{Convert.ToBase64String(ms.ToArray())}"; //per preview
+
+        newFoto.ImageFile = ms.ToArray();
+        if(fotoEdit != null) fotoEdit.ImageFile = ms.ToArray();
+    }
+
+    public async Task EditaFoto(Foto foto)
+    {
+        IsEditing = true;
+        IsCreating = false;
+        fotoEdit = foto;
+        Console.WriteLine(foto);
+        Console.WriteLine(foto.ImagePath.GetType());
+        Console.WriteLine(ImageUri.GetType());
+    }
+
+    public void RemoveImg()
+    {
+        ImageUri = "";
+    }
+
+
+}

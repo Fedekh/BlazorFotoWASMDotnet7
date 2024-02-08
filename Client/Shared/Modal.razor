@@ -1,0 +1,48 @@
+﻿<div class="modal-div">
+    <div class="modall" tabindex="-1" style="">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-black">@Title</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-black" >
+                    <p>Sicuro di voler eliminare </p>
+                    <p>@EntitaEliminare ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" @onclick="MetodoPadre" class="btn btn-danger" @onclick:stopPropagation="true">Elimina</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? ModalId { get; set; } = "exampleModal";
+
+    [Parameter]
+    public string Title { get; set; } = "Eliminazione";
+
+    [Parameter]
+    public string? EntitaEliminare { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnParentMethod { get; set; }
+
+    private void MetodoPadre()
+    {
+        OnParentMethod.InvokeAsync();
+    }
+}
+
+
+@*
+la Classe EventCallback 
+è una struttura in Blazor che consente la comunicazione di eventi tra componenti.
+Questa struttura è utilizzata per definire i parametri degli eventi nei componenti Blazor viene invocato per notificare i genitori di un evento.
+Questo permette al componente genitore di assegnare una funzione di callback quando si verifica l'evento OnClick nel componente figlio.
+
+*@

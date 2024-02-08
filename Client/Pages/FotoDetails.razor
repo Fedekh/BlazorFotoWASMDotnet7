@@ -1,0 +1,49 @@
+﻿@page "/foto/{id:int}"
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+
+<PageTitle>@foto?.Name</PageTitle>
+
+@if(foto != null && result)
+{
+    
+    <FotoCard Name="@foto.Name"
+              Description="@foto.Description"
+              Img="@foto.ImagePath"
+              Width="550"
+              Text="Torna indietro" />
+}
+else if(!result)
+{
+   <NavLink class="btn btn-success" @onclick="(e) => NavigationManager.NavigateTo(NavigationManager.Uri)">Ricarica</NavLink>
+}
+else
+{
+    <Loading/>
+}
+
+    @code {
+    [Parameter]
+    public int id { get; set; }
+    private Foto? foto { get; set; }
+    private string? baseUrl;
+    private bool result = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        baseUrl = "https://localhost:7285/api/foto/";
+
+        string currentUrl = NavigationManager.Uri;
+
+        await LoadFotoById();
+        if (foto == null) result = false;
+    }
+
+
+    private async Task LoadFotoById()
+    {
+        foto = await HttpClient.GetFromJsonAsync<Foto>($"{baseUrl}getfoto/{id}");
+    }
+
+}
